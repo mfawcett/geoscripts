@@ -1,0 +1,9 @@
+{
+    "name": "geoscript",
+    "description": "Library for geospatial data access, manipulation, and rendering.",
+    "author": "Tim Schaub",
+    "dependencies": [],
+    "contributors": [],
+    "jars": "jars",
+    "main": "lib/geoscript"
+}

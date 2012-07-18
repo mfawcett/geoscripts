@@ -1,4 +1,11 @@
-#!/usr/bin/env ringo
+var fs = require("fs");
+
+// put GeoTools jars on the classpath
+var home = getResource("./package.json").getParentRepository().path;
+var jars = fs.join(home, "jars");
+fs.list(jars).forEach(function(jar) {
+    addToClasspath(fs.join(jars, jar));
+});
 
 var actions = require("./actions");
 var response = require("ringo/jsgi/response");
