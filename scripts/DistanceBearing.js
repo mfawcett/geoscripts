@@ -10,24 +10,35 @@ exports.distanceBearing = function () {
 		user:		"postgres",
 		password:	"p0stGISAdm!n"	
 	});
-	var features = postgis.get("polygons").query(new gs.filter.Filter("CONTAINS(buffer(POINT(-122.7668 42.4979), 0.01), centroid(geom))"));
+	//var features = postgis.get("polygons").query(new gs.filter.Filter("CONTAINS(buffer(POINT(-122.7668 42.4979), 0.01), centroid(geom))"));
 //			"DWITHIN(centroid(geom), POINT(-122.7668 42.4979), 700, meters)"));
 	// End hard-coded inputs
+	var features = postgis.get("polygons").query();
 
 	var i = 0;
 	features.forEach(function (f) {
-		i = i + 1;
+		//i = i + 1;
 		var calc  = new Packages.org.geotools.referencing.GeodeticCalculator();
 		calc.setStartingGeographicPoint(-122.7668, 42.4979);
 		
 		var p = f.geometry.centroid;
 		calc.setDestinationGeographicPoint(p.x, p.y);
 		
-		var bearing = calc.getAzimuth();
-		print("bearing: " + bearing);
-		
 		var distance = calc.getOrthodromicDistance();
-		print("distance: " + distance);
+		var bearing = calc.getAzimuth();
+		
+		if(distance <= 2500) { //2500 in meters
+			print(p);
+			print("distance: " + distance);
+			print("bearing: " + bearing);
+			i = i + 1;
+		}
+		
+		//var bearing = calc.getAzimuth();
+		//print("bearing: " + bearing);
+		
+		//var distance = calc.getOrthodromicDistance();
+		//print("distance: " + distance);
 	});
 
 	print("feature count: " + i);
