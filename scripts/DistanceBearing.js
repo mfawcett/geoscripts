@@ -1,6 +1,8 @@
 var gs = require('../lib/geoscript');
 
 exports.distanceBearing = function () {
+	return;
+	
 	// Hard-coded inputs.  These should be passed in as generically as possible
 	var postgis = new gs.workspace.PostGIS({
 		database:	"GeoScript_Test",
