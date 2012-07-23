@@ -2,6 +2,7 @@ var response = require('ringo/jsgi/response');
 var mustache = require('ringo/mustache');
 var utils = require('ringo/utils/http');
 var httpclient = require('ringo/httpclient');
+var gs = require('./lib/geoscript');
 var db = require('./scripts/DistanceBearing');
 
 exports.index = function (req) {
@@ -13,40 +14,47 @@ exports.index = function (req) {
     );
 };
 
+function makeBBox(loc, radius_m) {
+	var calc  = new Packages.org.geotools.referencing.GeodeticCalculator();
+	calc.setStartingGeographicPoint(loc.x, loc.y);
+	
+	calc.setDirection(0, radius_m);
+	var north = calc.getDestinationGeographicPoint();
+
+	calc.setDirection(90, radius_m);
+	var east = calc.getDestinationGeographicPoint();
+
+	calc.setDirection(180, radius_m);
+	var south = calc.getDestinationGeographicPoint();
+
+	calc.setDirection(-90, radius_m);
+	var west = calc.getDestinationGeographicPoint();
+	
+	return {
+		lowerleft:	{ x: west.x, y: south.y },
+		upperright:	{ x: east.x, y: north.y }
+	};
+}
+
 exports.wps = function (req) {
+	var params = utils.parseParameters(req.input.read());
+	var bbox = makeBBox(params.location, params.radius);
 
-	var json = utils.parseParameters(req.input.read());
-	console.log(json.location.x + ", " + json.location.y);
-	console.log(json.radius);
-	console.log(json.wfs);
-	console.log(json.feature);
+	var request = "request=GetFeature&version=1.0.0&typeName=" + params.typeName + "&BBOX=" +
+		bbox.lowerleft.x + "," + bbox.lowerleft.y + "," + bbox.upperright.x + "," + bbox.upperright.y + ",EPSG:4326&outputFormat=JSON";
 
-	var xml = '' + 
-	'<wfs:GetFeature service="WFS" version="1.1.0"' +
-	'	  xmlns:wfs="' + json.wfs + '"' +
-	'	  xmlns="http://www.opengis.net/ogc"' +
-	'	  xmlns:gml="http://www.opengis.net/gml"' +
-	'	  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"' +
-	'	  xsi:schemaLocation="http://www.opengis.net/wfs' +
-	'	                      http://schemas.opengis.net/wfs/1.1.0/wfs.xsd">' +
-	'	  <wfs:Query typeName="' + json.feature + '">' +
-	'	    <Filter>' +
-	'	      <DWithin>' +
-	'	        <PropertyName>geom</PropertyName>' +
-	'	        <gml:Point srsName="http://www.opengis.net/gml/srs/epsg.xml#4326">' +
-	'	          <gml:coordinates>-122.7668,42.4979</gml:coordinates>' +
-	'	        </gml:Point>' +
-	'			<Distance units="m">200</Distance>' +
-	'	      </DWithin>' +
-	'	    </Filter>' +
-	'	  </wfs:Query>' +
-	'</wfs:GetFeature>';
+	var exchange = httpclient.get("http://192.168.10.126/geoserver/wfs?" + request);
 
-	return httpclient.post(json.wfs, xml);
-/*
-	db.distanceBearing();
+    var obj = JSON.parse(exchange.content);
+    if (obj.type != "FeatureCollection") {
+        throw new Error("Invalid GeoJSON type - " + obj.type);
+    }
+    
+    obj.features.forEach(function(f) {
+    	f.geometry = gs.geom.create(f.geometry);
+    });
+    
+	db.distanceBearing(obj.features, params.radius);
 
-    var template = getResource("./templates/index.html").content;
-    return response.json({ name: 'some name', epsg: 4326 });
-*/
+	return response.html(exchange.content);
 };
