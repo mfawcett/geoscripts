@@ -2,6 +2,7 @@ var response = require('ringo/jsgi/response');
 var mustache = require('ringo/mustache');
 var utils = require('ringo/utils/http');
 var httpclient = require('ringo/httpclient');
+var gs = require('./lib/geoscript');
 var db = require('./scripts/DistanceBearing');
 
 exports.index = function (req) {
@@ -13,49 +14,47 @@ exports.index = function (req) {
     );
 };
 
-exports.wps = function (req) {
-
-	var json = utils.parseParameters(req.input.read());
-	console.log(json.location.x + ", " + json.location.y);
-	console.log(json.radius);
-	console.log(json.wfs);
-	console.log(json.feature);
+function makeBBox(loc, radius_m) {
+	var calc  = new Packages.org.geotools.referencing.GeodeticCalculator();
+	calc.setStartingGeographicPoint(loc.x, loc.y);
 	
-	var typeName = json.feature;
-	var layer = "geom";
-	var lon = json.location.x;
-	var lat = json.location.y;
-	var distance = json.radius;
-	var distanceUnits = "m";
+	calc.setDirection(0, radius_m);
+	var north = calc.getDestinationGeographicPoint();
 
-	var xml = '' + 
-	'<wfs:GetFeature service="WFS" version="1.1.0"' +
-	'	xmlns:usa="http://usa.opengeo.org"' +
-	'	xmlns:wfs="http://www.opengis.net/wfs"' +
-	'	xmlns="http://www.opengis.net/ogc"' +
-	'	xmlns:gml="http://www.opengis.net/gml"' +
-	'	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"' +
-	'	xsi:schemaLocation="http://www.opengis.net/wfs' +
-	'                      http://schemas.opengis.net/wfs/1.1.0/wfs.xsd"' +
-	'  outputFormat="json">' +
-	'  <wfs:Query typeName="' + typeName + '">' +
-	'    <Filter>' +
-	'      <DWithin>' +
-	'        <PropertyName>' + layer + '</PropertyName>' +
-	'          <gml:Point srsName="http://www.opengis.net/gml/srs/epsg.xml#4326">' +
-	'            <gml:coordinates>' + lon + ',' + lat + '</gml:coordinates>' +
-	'          </gml:Point>' +
-	'          <Distance units="' + distanceUnits + '">' + distance + '</Distance>' +
-	'        </DWithin>' +
-	'      </Filter>' +
-	'  </wfs:Query>' +
-	'</wfs:GetFeature>';
+	calc.setDirection(90, radius_m);
+	var east = calc.getDestinationGeographicPoint();
 
-	return httpclient.post(json.wfs, xml);
-/*
-	db.distanceBearing();
+	calc.setDirection(180, radius_m);
+	var south = calc.getDestinationGeographicPoint();
 
-    var template = getResource("./templates/index.html").content;
-    return response.json({ name: 'some name', epsg: 4326 });
-*/
+	calc.setDirection(-90, radius_m);
+	var west = calc.getDestinationGeographicPoint();
+	
+	return {
+		lowerleft:	{ x: west.x, y: south.y },
+		upperright:	{ x: east.x, y: north.y }
+	};
+}
+
+exports.wps = function (req) {
+	var params = utils.parseParameters(req.input.read());
+	var bbox = makeBBox(params.location, params.radius);
+
+	var request = "request=GetFeature&version=1.0.0&typeName=" + params.typeName + "&BBOX=" +
+		bbox.lowerleft.x + "," + bbox.lowerleft.y + "," + bbox.upperright.x + "," + bbox.upperright.y + ",EPSG:4326&outputFormat=JSON";
+
+	var exchange = httpclient.get("http://192.168.10.126/geoserver/wfs?" + request);
+
+    var obj = JSON.parse(exchange.content);
+    if (obj.type != "FeatureCollection") {
+        throw new Error("Invalid GeoJSON type - " + obj.type);
+    }
+    
+    obj.features.forEach(function(f) {
+    	f.geometry = gs.geom.create(f.geometry);
+    });
+    
+	db.distanceBearing(obj.features, params.radius);
+
+	return response.html(exchange.content);
 };

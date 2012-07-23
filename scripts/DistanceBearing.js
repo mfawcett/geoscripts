@@ -1,21 +1,7 @@
 var gs = require('../lib/geoscript');
 
-exports.distanceBearing = function () {
-	
-	// Hard-coded inputs.  These should be passed in as generically as possible
-	var postgis = new gs.workspace.PostGIS({
-		database:	"GeoScript_Test",
-		host:		"192.168.10.140",
-		port:		5432,
-		schema:		"public",
-		user:		"postgres",
-		password:	"p0stGISAdm!n"	
-	});
-	//var features = postgis.get("polygons").query(new gs.filter.Filter("CONTAINS(buffer(POINT(-122.7668 42.4979), 0.01), centroid(geom))"));
-//			"DWITHIN(centroid(geom), POINT(-122.7668 42.4979), 700, meters)"));
-	// End hard-coded inputs
-	var features = postgis.get("polygons").query();
-	
+exports.distanceBearing = function (features, radius) {
+
 	var jsonObject = [];
 
 	var i = 0;
@@ -30,7 +16,7 @@ exports.distanceBearing = function () {
 		var distance = calc.getOrthodromicDistance();
 		var bearing = calc.getAzimuth();
 		
-		if(distance <= 2500) { //2500 in meters
+		if (distance <= radius) {
 			print(p);
 			print("distance: " + distance);
 			print("bearing: " + bearing);
@@ -47,9 +33,6 @@ exports.distanceBearing = function () {
 	});
 
 	print("feature count: " + i);
-	postgis.close();
-	
-	print(JSON.stringify(jsonObject));
 	
 	return jsonObject;
 }
