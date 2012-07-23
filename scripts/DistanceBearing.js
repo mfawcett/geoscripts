@@ -1,7 +1,6 @@
 var gs = require('../lib/geoscript');
 
 exports.distanceBearing = function () {
-	return;
 	
 	// Hard-coded inputs.  These should be passed in as generically as possible
 	var postgis = new gs.workspace.PostGIS({
@@ -16,6 +15,8 @@ exports.distanceBearing = function () {
 //			"DWITHIN(centroid(geom), POINT(-122.7668 42.4979), 700, meters)"));
 	// End hard-coded inputs
 	var features = postgis.get("polygons").query();
+	
+	var jsonObject = [];
 
 	var i = 0;
 	features.forEach(function (f) {
@@ -41,8 +42,14 @@ exports.distanceBearing = function () {
 		
 		//var distance = calc.getOrthodromicDistance();
 		//print("distance: " + distance);
+		
+		jsonObject.push({distance: distance, bearing: bearing});
 	});
 
 	print("feature count: " + i);
 	postgis.close();
+	
+	print(JSON.stringify(jsonObject));
+	
+	return jsonObject;
 }
