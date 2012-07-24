@@ -1,14 +1,13 @@
 var gs = require('../lib/geoscript');
 
-exports.distanceBearing = function (features, radius) {
+exports.distanceBearing = function (params, features) {
 
 	var jsonObject = [];
+	var featureCount = 0;
 
-	var i = 0;
 	features.forEach(function (f) {
-		//i = i + 1;
 		var calc  = new Packages.org.geotools.referencing.GeodeticCalculator();
-		calc.setStartingGeographicPoint(-122.7668, 42.4979);
+		calc.setStartingGeographicPoint(params.location.x, params.location.y);
 		
 		var p = f.geometry.centroid;
 		calc.setDestinationGeographicPoint(p.x, p.y);
@@ -16,23 +15,18 @@ exports.distanceBearing = function (features, radius) {
 		var distance = calc.getOrthodromicDistance();
 		var bearing = calc.getAzimuth();
 		
-		if (distance <= radius) {
+		if (distance <= params.radius) {
 			print(p);
-			print("distance: " + distance);
-			print("bearing: " + bearing);
-			i = i + 1;
+			print(" - distance: " + distance);
+			print(" - bearing: " + bearing);
+			
+			//If the feature is inside the radius, add it to the jsonObject
+			jsonObject.push({distance: distance, bearing: bearing});
+			featureCount++;
 		}
-		
-		//var bearing = calc.getAzimuth();
-		//print("bearing: " + bearing);
-		
-		//var distance = calc.getOrthodromicDistance();
-		//print("distance: " + distance);
-		
-		jsonObject.push({distance: distance, bearing: bearing});
 	});
 
-	print("feature count: " + i);
+	print("Feature count: " + featureCount + " / " + features.length);
 	
 	return jsonObject;
 }
