@@ -54,5 +54,5 @@ exports.wps = function (req) {
     	f.geometry = gs.geom.create(f.geometry);
     });
     
-	return response.json(db.distanceBearing(params, obj.features));
+	return response.json(db.distanceBearing(params.location, params.radius, obj.features));
 };

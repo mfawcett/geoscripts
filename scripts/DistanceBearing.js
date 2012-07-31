@@ -1,13 +1,13 @@
 var gs = require('../lib/geoscript');
 
-exports.distanceBearing = function (params, features) {
+exports.distanceBearing = function (location, radius, features) {
 
 	var jsonObject = [];
 	var featureCount = 0;
 
 	features.forEach(function (f) {
 		var calc  = new Packages.org.geotools.referencing.GeodeticCalculator();
-		calc.setStartingGeographicPoint(params.location.x, params.location.y);
+		calc.setStartingGeographicPoint(location.x, location.y);
 		
 		var p = f.geometry.centroid;
 		calc.setDestinationGeographicPoint(p.x, p.y);
@@ -15,7 +15,7 @@ exports.distanceBearing = function (params, features) {
 		var distance = calc.getOrthodromicDistance();
 		var bearing = calc.getAzimuth();
 		
-		if (distance <= params.radius) {
+		if (distance <= radius) {
 			print(p);
 			print(" - distance: " + distance);
 			print(" - bearing: " + bearing);
