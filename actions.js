@@ -40,10 +40,10 @@ exports.wps = function (req) {
 	var params = utils.parseParameters(req.input.read());
 	var bbox = makeBBox(params.location, params.radius);
 
-	var request = "request=GetFeature&version=1.0.0&typeName=" + params.typeName + "&BBOX=" +
+	var request = "?request=GetFeature&version=1.0.0&typeName=" + params.typeName + "&BBOX=" +
 		bbox.lowerleft.x + "," + bbox.lowerleft.y + "," + bbox.upperright.x + "," + bbox.upperright.y + ",EPSG:4326&outputFormat=JSON";
 
-	var exchange = httpclient.get("http://192.168.10.126/geoserver/wfs?" + request);
+	var exchange = httpclient.get(params.wfs + request);
 
     var obj = JSON.parse(exchange.content);
     if (obj.type != "FeatureCollection") {
