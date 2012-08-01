@@ -76,7 +76,7 @@ exports.medfordschools = function (req) {
     	f.geometry = gs.geom.create(f.geometry);
     });
     
-	var resp = response.json(db.distanceBearing(params, obj.features));
+	var resp = response.json(db.distanceBearing(params.location, params.radius, obj.features));
 	resp.headers['Access-Control-Allow-Origin'] = '*';
 	return resp;
 };
@@ -100,7 +100,7 @@ exports.medfordhospitals = function (req) {
     	f.geometry = gs.geom.create(f.geometry);
     });
     
-	var resp = response.json(db.distanceBearing(params, obj.features));
+	var resp = response.json(db.distanceBearing(params.location, params.radius, obj.features));
 	resp.headers['Access-Control-Allow-Origin'] = '*';
 	return resp;
 };
