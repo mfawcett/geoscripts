@@ -56,3 +56,51 @@ exports.wps = function (req) {
     
 	return response.json(db.distanceBearing(params.location, params.radius, obj.features));
 };
+
+exports.medfordschools = function (req) {
+	var params = utils.parseParameters(req.input.read());
+	var bbox = makeBBox(params.location, params.radius);
+	
+	var schoolsWFS = 'http://geoserver.rogue.lmnsolutions.com/geoserver/wfs';
+	var requestParams = "?request=GetFeature&version=1.0.0&typeName=medford:schools&BBOX=" +
+		bbox.lowerleft.x + "," + bbox.lowerleft.y + "," + bbox.upperright.x + "," + bbox.upperright.y + ",EPSG:4326&outputFormat=JSON";
+
+	var exchange = httpclient.get(schoolsWFS + requestParams);
+
+    var obj = JSON.parse(exchange.content);
+    if (obj.type != "FeatureCollection") {
+        throw new Error("Invalid GeoJSON type - " + obj.type);
+    }
+    
+    obj.features.forEach(function(f) {
+    	f.geometry = gs.geom.create(f.geometry);
+    });
+    
+	var resp = response.json(db.distanceBearing(params, obj.features));
+	resp.headers['Access-Control-Allow-Origin'] = '*';
+	return resp;
+};
+
+exports.medfordhospitals = function (req) {
+	var params = utils.parseParameters(req.input.read());
+	var bbox = makeBBox(params.location, params.radius);
+	
+	var hospitalsWFS = 'http://geoserver.rogue.lmnsolutions.com/geoserver/wfs';
+	var requestParams = "?request=GetFeature&version=1.0.0&typeName=medford:hospitals&BBOX=" +
+		bbox.lowerleft.x + "," + bbox.lowerleft.y + "," + bbox.upperright.x + "," + bbox.upperright.y + ",EPSG:4326&outputFormat=JSON";
+
+	var exchange = httpclient.get(hospitalsWFS + requestParams);
+
+    var obj = JSON.parse(exchange.content);
+    if (obj.type != "FeatureCollection") {
+        throw new Error("Invalid GeoJSON type - " + obj.type);
+    }
+    
+    obj.features.forEach(function(f) {
+    	f.geometry = gs.geom.create(f.geometry);
+    });
+    
+	var resp = response.json(db.distanceBearing(params, obj.features));
+	resp.headers['Access-Control-Allow-Origin'] = '*';
+	return resp;
+};
