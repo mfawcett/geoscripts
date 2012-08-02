@@ -90,7 +90,7 @@ function convertHexDigit(byte) {
 }
 
 
-function exacuteWps(params) {
+function executeWps(params) {
 	if (params && params.x && params.y && params.radius && params.wfs && params.typeName) {
 
 	    var resp = null;
@@ -169,7 +169,7 @@ exports.wps = function (req) {
 	}
 	
 	var params = parseParameters(req);
-	return exacuteWps(params);
+	return executeWps(params);
  };
 
  exports.medfordschools = function (req) {
@@ -180,7 +180,7 @@ exports.wps = function (req) {
 	var params = parseParameters(req);
 	params.wfs = 'http://geoserver.rogue.lmnsolutions.com/geoserver/wfs';
 	params.typeName = "medford:schools";
-	return exacuteWps(params);
+	return executeWps(params);
  };
 
 
@@ -192,6 +192,6 @@ exports.medfordhospitals = function (req) {
 	var params = parseParameters(req);
 	params.wfs = 'http://geoserver.rogue.lmnsolutions.com/geoserver/wfs';
 	params.typeName = "medford:hospitals";
-	return exacuteWps(params);
+	return executeWps(params);
 };
 
