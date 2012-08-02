@@ -8,7 +8,7 @@ exports.distanceBearing = function (params, features) {
 	features.forEach(function (f) {
 		var calc  = new Packages.org.geotools.referencing.GeodeticCalculator();
 		calc.setStartingGeographicPoint(params.x, params.y);
-		
+
 		var p = f.geometry.centroid;
 		calc.setDestinationGeographicPoint(p.x, p.y);
 		
@@ -21,7 +21,7 @@ exports.distanceBearing = function (params, features) {
 			print(" - bearing: " + bearing);
 			
 			//If the feature is inside the radius, add it to the jsonObject
-			jsonObject.push({endPoint: {x: p.x, y: p.x}, distance: distance, bearing: bearing});
+			jsonObject.push({endPoint: {x: p.x, y: p.y}, distance: distance, bearing: bearing});
 			featureCount++;
 		}
 	});

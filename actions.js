@@ -57,30 +57,79 @@ function makeBBox(x, y, radius_m) {
 	};
 }
 
-function isEmpty(obj) {
-    for(var prop in obj) {
-        if(obj.hasOwnProperty(prop))
-            return false;
-    }
+// convert + to spaces, decode %ff hex sequences,
+// then decode to string using the specified encoding.
+function decodeToString(bytes, encoding) {
+	var k = 0;
+	while ((k = bytes.indexOf(PLUS, k)) > -1) {
+		bytes[k++] = SPACE;
+	}
+	var i, j = 0;
+	while ((i = bytes.indexOf(PERCENT, j)) > -1) {
+		j = i;
+		while (bytes[i] == PERCENT && i++ <= bytes.length - 3) {
+			bytes[j++] = (convertHexDigit(bytes[i++]) << 4) + convertHexDigit(bytes[i++]);
+		}
+		if (i < bytes.length) {
+			bytes.copy(i, bytes.length, bytes, j);
+		}
+		bytes.length -= i - j;
+	}
 
-    return true;
+	return bytes.decodeToString(encoding);
 }
 
-exports.wps = function (req) {
-	
-	// if the request received is of method "OPTIONS", respond with okay so that the POST can follow as expected 
-	if(req.method === "OPTIONS") {
-		return {
-	        status: 200,
+function convertHexDigit(byte) {
+	if (byte >= CHAR_0 && byte <= CHAR_9)
+		return byte - CHAR_0;
+	if (byte >= CHAR_a && byte <= CHAR_f)
+		return byte - CHAR_a + 10;
+	if (byte >= CHAR_A && byte <= CHAR_F)
+		return byte - CHAR_A + 10;
+	return 0;
+}
+
+
+function exacuteWps(params) {
+	if (params && params.x && params.y && params.radius && params.wfs && params.typeName) {
+
+	    var resp = null;
+		
+		var bbox = makeBBox(params.x, params.y, params.radius);
+
+		var requestParams = "?request=GetFeature&version=1.0.0&typeName=" + params.typeName + "&BBOX=" +
+			bbox.lowerleft.x + "," + bbox.lowerleft.y + "," + bbox.upperright.x + "," + bbox.upperright.y + ",EPSG:4326&outputFormat=JSON";
+
+		var exchange = httpclient.get(params.wfs + requestParams);
+
+	    var obj = JSON.parse(exchange.content);
+	    if (obj.type != "FeatureCollection") {
+	        throw new Error("Invalid GeoJSON type - " + obj.type);
+	    }
+	    
+	    obj.features.forEach(function(f) {
+	    	f.geometry = gs.geom.create(f.geometry);
+	    });
+	    
+	    resp = response.json(db.distanceBearing(params, obj.features));
+	} else {
+		print("Server Error: Invalid parameters");
+		resp = {
+	        status: 500,
 	        headers: {"Content-Type": "text/plain",
 	        	"Access-Control-Allow-Origin": "*",
 	        	"Access-Control-Allow-Methods": "POST, GET",
 	        	"Access-Control-Allow-Headers": "x-requested-with,Content-Type"},
-	        body: ["reponse to preflight"]
+	        body: ["Invalid parameters"]
 	    };
 	}
-	
-	
+
+    resp.headers['Access-Control-Allow-Origin'] = '*';
+    return resp;
+} 
+
+
+function extractParams(req) {
 	var input = req.input.read();
 	var params = null;
 	
@@ -96,74 +145,53 @@ exports.wps = function (req) {
 	for (var key in params) {
 		print("  " + key + " = " + params[key]);
 	}
-	print("} // params");
+	print("} // params");	
 	
-	
-	if (params && params.x && params.y && params.radius && params.wfs && params.typeName) {
+	return params;
+}
 
-	    var resp = null;
-		
-		var bbox = makeBBox(params.x, params.y, params.radius);
+function generateOptionsResponse() {
+	// if the request received is of method "OPTIONS", respond with okay so that
+	// the POST can follow as expected
+	return {
+        status: 200,
+        headers: {"Content-Type": "text/plain",
+        	"Access-Control-Allow-Origin": "*",
+        	"Access-Control-Allow-Methods": "POST, GET",
+        	"Access-Control-Allow-Headers": "x-requested-with,Content-Type"},
+        body: ["reponse to preflight"]
+    };	
+}
 
-		var request = "?request=GetFeature&version=1.0.0&typeName=" + params.typeName + "&BBOX=" +
-			bbox.lowerleft.x + "," + bbox.lowerleft.y + "," + bbox.upperright.x + "," + bbox.upperright.y + ",EPSG:4326&outputFormat=JSON";
-
-		var exchange = httpclient.get(params.wfs + request);
-
-	    var obj = JSON.parse(exchange.content);
-	    if (obj.type != "FeatureCollection") {
-	        throw new Error("Invalid GeoJSON type - " + obj.type);
-	    }
-	    
-	    obj.features.forEach(function(f) {
-	    	f.geometry = gs.geom.create(f.geometry);
-	    });
-	    
-	    resp = response.json(db.distanceBearing(params, obj.features));
-	} else {
-		print("WARNING: Parameters not specified as expected.");
-		resp = {
-	        status: 500,
-	        headers: {"Content-Type": "text/plain",
-	        	"Access-Control-Allow-Origin": "*",
-	        	"Access-Control-Allow-Methods": "POST, GET",
-	        	"Access-Control-Allow-Headers": "x-requested-with,Content-Type"},
-	        body: ["Parameters not specified as expected."]
-	    };
+exports.wps = function (req) {
+	if(req.method === "OPTIONS") {
+		return generateOptionsResponse();
 	}
-
-    resp.headers['Access-Control-Allow-Origin'] = '*';
-    return resp;
+	
+	var params = extractParams(req);
+	return exacuteWps(params);
  };
 
-// convert + to spaces, decode %ff hex sequences,
-// then decode to string using the specified encoding.
-function decodeToString(bytes, encoding) {
-    var k = 0;
-    while((k = bytes.indexOf(PLUS, k)) > -1) {
-        bytes[k++] = SPACE;
-    }
-    var i, j = 0;
-    while((i = bytes.indexOf(PERCENT, j)) > -1) {
-        j = i;
-        while (bytes[i] == PERCENT && i++ <= bytes.length - 3) {
-            bytes[j++] = (convertHexDigit(bytes[i++]) << 4)
-                        + convertHexDigit(bytes[i++]);
-        }
-        if (i < bytes.length) {
-            bytes.copy(i, bytes.length, bytes, j);
-        }
-        bytes.length -= i - j;
-    }
-    return bytes.decodeToString(encoding);
-}
+ exports.medfordschools = function (req) {
+	if(req.method === "OPTIONS") {
+		return generateOptionsResponse();
+	}
+	
+	var params = extractParams(req);
+	params.wfs = 'http://geoserver.rogue.lmnsolutions.com/geoserver/wfs';
+	params.typeName = "medford:schools";
+	return exacuteWps(params);
+ };
 
-function convertHexDigit(byte) {
-    if (byte >= CHAR_0 && byte <= CHAR_9)
-        return byte - CHAR_0;
-    if (byte >= CHAR_a && byte <= CHAR_f)
-        return byte - CHAR_a + 10;
-    if (byte >= CHAR_A && byte <= CHAR_F)
-        return byte - CHAR_A + 10;
-    return 0;
-}
+
+exports.medfordhospitals = function (req) {
+	if(req.method === "OPTIONS") {
+		return generateOptionsResponse();
+	}
+	
+	var params = extractParams(req);
+	params.wfs = 'http://geoserver.rogue.lmnsolutions.com/geoserver/wfs';
+	params.typeName = "medford:hospitals";
+	return exacuteWps(params);
+};
+
