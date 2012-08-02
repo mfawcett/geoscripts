@@ -7,7 +7,7 @@ exports.distanceBearing = function (params, features) {
 
 	features.forEach(function (f) {
 		var calc  = new Packages.org.geotools.referencing.GeodeticCalculator();
-		calc.setStartingGeographicPoint(params.location.x, params.location.y);
+		calc.setStartingGeographicPoint(params.x, params.y);
 		
 		var p = f.geometry.centroid;
 		calc.setDestinationGeographicPoint(p.x, p.y);
@@ -27,6 +27,7 @@ exports.distanceBearing = function (params, features) {
 	});
 
 	print("Feature count: " + featureCount + " / " + features.length);
+
 	
 	return jsonObject;
 }
