@@ -90,7 +90,7 @@ function convertHexDigit(byte) {
 }
 
 
-function exacuteWps(params) {
+function executeWps(params) {
 	if (params && params.x && params.y && params.radius && params.wfs && params.typeName) {
 
 	    var resp = null;
@@ -128,14 +128,13 @@ function exacuteWps(params) {
     return resp;
 } 
 
-
 function parseParameters(req) {
 	var input = req.input.read();
 	var params = null;
 	
 	// handle json and application/x-www-form-urlencoded input
 	if (req.headers["content-type"] === "application/json") {
-		var inputString =  decodeToString(input);
+		var inputString = decodeToString(input);
 		params = eval('(' + inputString + ')');
 	} else {
 		params = utils.parseParameters(input);		
@@ -169,7 +168,7 @@ exports.wps = function (req) {
 	}
 	
 	var params = parseParameters(req);
-	return exacuteWps(params);
+	return executeWps(params);
  };
 
  exports.medfordschools = function (req) {
@@ -180,9 +179,8 @@ exports.wps = function (req) {
 	var params = parseParameters(req);
 	params.wfs = 'http://geoserver.rogue.lmnsolutions.com/geoserver/wfs';
 	params.typeName = "medford:schools";
-	return exacuteWps(params);
+	return executeWps(params);
  };
-
 
 exports.medfordhospitals = function (req) {
 	if(req.method === "OPTIONS") {
@@ -192,6 +190,5 @@ exports.medfordhospitals = function (req) {
 	var params = parseParameters(req);
 	params.wfs = 'http://geoserver.rogue.lmnsolutions.com/geoserver/wfs';
 	params.typeName = "medford:hospitals";
-	return exacuteWps(params);
+	return executeWps(params);
 };
-

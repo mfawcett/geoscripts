@@ -27,7 +27,6 @@ exports.distanceBearing = function (params, features) {
 	});
 
 	print("Feature count: " + featureCount + " / " + features.length);
-
 	
 	return jsonObject;
 }
